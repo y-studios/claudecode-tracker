@@ -12,12 +12,12 @@ export PATH="$NODE_BIN:$PATH"
 
 node scripts/export-usage.mjs --out=data/usage.json --days=90
 
-git add data/usage.json
-if git diff --cached --quiet -- data/usage.json; then
+# data/usage.json だけを対象にする（他にステージ済みの変更があっても巻き込まない）
+if git diff --quiet -- data/usage.json && git diff --cached --quiet -- data/usage.json; then
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) no change, skip push"
   exit 0
 fi
 
-git commit -m "chore: sync usage data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+git commit -m "chore: sync usage data $(date -u +%Y-%m-%dT%H:%M:%SZ)" -- data/usage.json
 git push origin main
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) pushed usage data update"
