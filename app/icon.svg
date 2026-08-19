@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fb923c"/>
+      <stop offset="0.55" stop-color="#ea580c"/>
+      <stop offset="1" stop-color="#b2583c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M130.13499294879455 381.86500705120545 A178 178 0 1 1 381.8650070512056 381.86500705120534" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="34" stroke-linecap="round"/><path d="M130.13499294879455 381.86500705120545 A178 178 0 1 1 425.28805990053735 311.0050249987406" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+  <g stroke="#ffffff" stroke-width="40" stroke-linecap="round" fill="none"><line x1="342" y1="244" x2="162" y2="244"/><line x1="315.6396103067893" y1="307.6396103067893" x2="188.36038969321072" y2="180.36038969321072"/><line x1="252" y1="334" x2="252" y2="154"/><line x1="188.36038969321072" y1="307.6396103067893" x2="315.6396103067893" y2="180.36038969321072"/></g>
+  <!-- terminal cursor -->
+  <rect x="326" y="336" width="30" height="40" rx="6" fill="#ffffff"/>
+  <rect x="226" y="404" width="60" height="16" rx="8" fill="rgba(255,255,255,0.85)"/>
+</svg>
