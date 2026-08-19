@@ -1,50 +1,78 @@
 # Claudecodeの使い手（Master of Claude Code）
 
-毎日の5時間枠・トークン消費上限をパンパンまで使い倒すヘビーユーザーのための、
-Claude Code 日次消費量・稼働時間・推定トークン推移を可視化するダッシュボード。
+Claude Codeのローカルログから実際の稼働時間・消費トークンを自動集計して表示する、
+**個人用・読み取り専用の実績ダッシュボード**。手入力は一切なく、1時間ごとに自動更新される。
 
 - 公開URL（暫定）: https://y-studios.github.io/claudecode-tracker/
 - 公開URL（カスタムサブドメイン）: https://claudecode.shindan.biz/ （DNS設定後に有効化）
 - 技術: Next.js 16 (App Router / `output: "export"`) + TypeScript + Tailwind CSS v4 + Framer Motion + Recharts 3 + lucide-react
-- データ: ブラウザの LocalStorage のみ（`claudecode-tracker:v1`）。サーバー送信なし・アカウント不要・完全無料
 - 非公式のファンメイドツール。Anthropic社とは無関係
-- **手入力（ダミー/自己申告）と、実データ取り込み（`scripts/export-usage.mjs`）の2系統に対応**。何も操作しなければ手入力の初期サンプルログが入っているだけなので、実際の消費量と連動させたい場合は下記「実データを取り込む」を実行すること
+- 手入力UI・LocalStorage・インポート/エクスポートUIは持たない。表示専用（他人が使うことは想定していない）
 
-## 機能
+## アーキテクチャ
 
-| セクション | 内容 |
-| --- | --- |
-| ヒーロー | Claudeキャラの応援吹き出し、クイックステータス（連続上限到達 / 今月総稼働 / 推定総トークン / 使い手ランク） |
-| Today (Card A) | 270°の5時間リミットゲージ、稼働時間・トークンのスライダー、作業タグ、メモ、ワンタップ保存 |
-| Dashboard (Card B) | 日別稼働時間の棒グラフ（5h上限の赤点線・到達日ハイライト）＋推定トークンのエリアチャート。14日/30日切替 |
-| Card C | GitHub草風の活動ヒートマップ（直近16週、オレンジ濃淡） |
-| Card D | 使い手ランク（見習い→修行中→熟練プロンプター→Claudeの右腕→特級術師→神）＋実績バッジ8種 |
-| Card E | X（Twitter）ワンタップシェア（intent URL）・コピー |
-| 過去ログ | 一覧編集・削除・過去日追加・JSONエクスポート/インポート・サンプルログの削除/復元 |
-
-スライダーを動かすとゲージ・グラフ・ヒートマップ・ランクが**保存前でも即時連動**する（Linear風のライブプレビュー）。
-
-## 実データを取り込む（あなたのClaude Code利用状況と連携）
-
-ブラウザは `~/.claude/` を直接読めない（静的サイトからローカルファイルへ自動アクセスはできない）ため、
-「ローカルでJSON書き出し → サイトのインポートボタンで取り込み」という2ステップ方式になっている。
-外部送信は一切なく、書き出したJSONにも会話内容やコードは含まれない（日付・稼働時間・トークン数・触ったプロジェクト名のみ）。
-
-```bash
-cd claudecode-tracker
-npm run export-usage                 # 直近90日分を usage-export.json に書き出し
-npm run export-usage -- --days=30    # 期間を変える場合
+```
+Mac (~/.claude/projects/**/*.jsonl)
+   │  scripts/export-usage.mjs（15分ギャップでセッションをクラスタリングし日別集計）
+   ▼
+data/usage.json（リポジトリにコミット）
+   │  git push
+   ▼
+GitHub Actions (.github/workflows/deploy.yml)
+   │  next build（data/usage.json を静的にimportしてページに埋め込む）
+   ▼
+GitHub Pages（公開URL）
 ```
 
-書き出したら、サイトの「過去ログの編集」→「インポート」ボタンで `usage-export.json` を選択する。
-既存のログは日付単位で上書きされる（インポートしなかった日はそのまま残る）。
+サイト自体はサーバーもLocalStorageも持たない完全な静的HTML。`data/usage.json` はビルド時に
+`lib/data.ts` 経由でNext.jsのページに直接importされ、その瞬間のスナップショットがそのままデプロイされる。
+「1時間ごとの自動更新」は **ローカルMac上のLaunchAgentが1時間ごとにログを集計してpush → その都度サイトが再ビルドされる**
+という仕組みで実現している（サイト側が能動的にMacを読みに行くことはできないため）。
 
-**集計方法**:
-- 稼働時間: `~/.claude/projects/**/*.jsonl` の全メッセージのタイムスタンプを時系列に並べ、間隔15分以内を1つの活動区間として連結（WakaTime等と同じアイドル閾値の考え方）。並行して走らせた複数セッションの時間も区間統合してから計算するので二重計上しない
-- トークン: 各アシスタント発言の `usage`（input + output + cache_creation + cache_read の実測合計）を日別に集計。キャッシュ読み込みを含むため、手入力の目安値（1日数M）より一桁以上大きくなるのが正常
-- 5時間の枠を大きく超える日があるのは想定通り（このツールの「稼働時間」は日次の実働時間で、Anthropicのローリング5時間ウィンドウそのものではない）
+## 自動同期の仕組み（LaunchAgent）
 
-定期的に実行して再インポートすれば、そのつど最新の実績に更新できる（自動連携ではなく手動同期）。
+- `~/Library/LaunchAgents/com.claudecode-tracker.sync.plist` が `scripts/sync-and-deploy.sh` を1時間ごとに実行
+- `sync-and-deploy.sh` は `export-usage.mjs` を実行し、`data/usage.json` に変化があった場合のみ
+  `data/usage.json` **だけ**をコミットしてpushする（他にステージ済みの変更があっても巻き込まない）
+- push先はGitHub Actionsが検知して自動ビルド・デプロイする
+- ログは `.sync.log`（gitignore済み）に出力される
+- Macがスリープ/ログアウトしている間は動かない。個人のMac上で動くローカル自動化であり、クラウド上の定期実行ではない
+
+```bash
+# 状態確認
+launchctl print gui/$(id -u)/com.claudecode-tracker.sync
+
+# 手動で今すぐ同期
+./scripts/sync-and-deploy.sh
+
+# 停止したいとき
+launchctl bootout gui/$(id -u)/com.claudecode-tracker.sync
+
+# 再開したいとき
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.claudecode-tracker.sync.plist
+```
+
+## 集計ロジック（`scripts/export-usage.mjs`）
+
+外部送信は一切なく、`data/usage.json` に書き出すのは日付・稼働時間・トークン数のみ
+（会話内容やプロジェクト名は含めない）。
+
+- **稼働時間**: `~/.claude/projects/**/*.jsonl` の全メッセージのタイムスタンプを時系列に並べ、
+  間隔15分以内を1つの活動区間として連結（WakaTime等と同じアイドル閾値の考え方）。
+  全ファイル横断で1本の時系列に合流させてから区間統合するため、並行して走らせた複数セッションの
+  時間を二重計上しない
+- **トークン**: 各アシスタント発言の `usage`（input + output + cache_creation + cache_read の実測合計）を日別に集計。
+  キャッシュ読み込みを含むため数百M〜B単位になるのが正常（画面のグラフは動的スケール＋K/M/B表記で対応）
+- 5時間の枠を大きく超える日があるのは想定通り（このツールの「稼働時間」は日次の実働時間の実測値で、
+  Anthropicが公式に提示するローリング5時間ウィンドウそのものではない、独自の推定ロジック）
+- 日付はすべて Asia/Tokyo 基準（`lib/date.ts`）。GitHub Actions(UTC)でビルドしてもズレないよう
+  タイムゾーンを明示的に固定している
+
+```bash
+node scripts/export-usage.mjs                # data/usage.json に直近90日分を書き出し
+node scripts/export-usage.mjs --days=30      # 期間を変える場合
+node scripts/export-usage.mjs --out=foo.json # 出力先を変える場合
+```
 
 ## 開発
 
@@ -54,6 +82,7 @@ npm run dev                 # http://localhost:3000
 npm run build               # out/ に静的書き出し（basePath なし）
 NEXT_PUBLIC_BASE_PATH=/claudecode-tracker npm run build   # GitHub Pages 暫定URL向け
 node scripts/gen-icons.mjs  # ファビコン / OGP 再生成
+node scripts/export-usage.mjs && npm run build  # 実データを最新化してからビルド
 ```
 
 ## デプロイ（GitHub Pages）
@@ -71,10 +100,11 @@ node scripts/gen-icons.mjs  # ファビコン / OGP 再生成
 3. `gh api -X PUT repos/y-studios/claudecode-tracker/pages -f cname=claudecode.shindan.biz -F https_enforced=true`
 4. 次回デプロイ（`workflow_dispatch` で手動起動可）から自動でルート配信に切り替わる
 
-## LocalStorage スキーマ
+## data/usage.json スキーマ
 
 ```ts
-{ version: 1, seeded: boolean, logs: { "YYYY-MM-DD": { date, hours(0-24), tokensM, tags[], memo?, sample?, updatedAt } } }
+{ generatedAt: string /* ISO */, logs: { "YYYY-MM-DD": { date, hours, tokensM } } }
 ```
 
-手入力フォーム（Today カード）は 0〜5.0h のスライダーだが、インポート経由のログは実測値をそのまま保持する（5時間を超えてもよい）。
+このファイルはリポジトリにコミットされる（＝publicリポジトリなので誰でも閲覧できる）。
+含まれるのは日付・稼働時間・トークン数のみで、会話内容やプロジェクト名は含まれない。
