@@ -4,7 +4,7 @@ import { Asterisk } from "./claude/Asterisk";
 import { ClaudeBuddy } from "./claude/ClaudeBuddy";
 
 const NAV = [
-  { href: "#today", label: "今日の記録" },
+  { href: "#today", label: "今日の実績" },
   { href: "#dashboard", label: "推移" },
   { href: "#rank", label: "称号" },
   { href: "#share", label: "シェア" },

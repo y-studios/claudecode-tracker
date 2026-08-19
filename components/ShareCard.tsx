@@ -6,7 +6,6 @@ import { ClaudeBuddy } from "./claude/ClaudeBuddy";
 import { LIMIT_HOURS } from "@/lib/types";
 import { siteUrl } from "@/lib/format";
 import type { Rank, Totals } from "@/lib/stats";
-import { useHydrated } from "@/lib/storage";
 
 interface Props {
   todayHours: number;
@@ -28,17 +27,16 @@ export function buildShareText({ todayHours, totals, streak, rank }: Props): str
 
 export function ShareCard(props: Props) {
   const [copied, setCopied] = useState(false);
-  const hydrated = useHydrated();
   const text = buildShareText(props);
+  const url = siteUrl();
 
   const open = () => {
-    const url = siteUrl();
     const intent = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
     window.open(intent, "_blank", "noopener,noreferrer,width=600,height=640");
   };
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(`${text}\n${siteUrl()}`);
+      await navigator.clipboard.writeText(`${text}\n${url}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -65,7 +63,7 @@ export function ShareCard(props: Props) {
           </div>
         </div>
         <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink">{text}</p>
-        <p className="mt-2 truncate text-xs text-clay underline decoration-clay/40">{hydrated ? siteUrl() : ""}</p>
+        <p className="mt-2 truncate text-xs text-clay underline decoration-clay/40">{url}</p>
       </div>
 
       <div className="mt-4 flex flex-col gap-2">

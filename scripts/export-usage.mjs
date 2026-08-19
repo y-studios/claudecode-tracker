@@ -1,23 +1,25 @@
 #!/usr/bin/env node
 // Claude Code のローカルセッションログ(~/.claude/projects/**/*.jsonl)から
-// 実際の稼働時間・消費トークンを集計し、このダッシュボードの LocalStorage スキーマで書き出す。
+// 実際の稼働時間・消費トークンを集計し、data/usage.json に書き出す。
+// このファイルはリポジトリにコミットされ、Next.js のビルド時に静的に読み込まれる
+// (サイト側はサーバーもLocalStorageも持たない、完全な読み取り専用ダッシュボード)。
 //
 // 使い方:
-//   node scripts/export-usage.mjs                → usage-export.json を書き出し
-//   node scripts/export-usage.mjs --out=foo.json  → 出力先を指定
-//   node scripts/export-usage.mjs --days=14       → 直近N日分だけ（既定90日）
+//   node scripts/export-usage.mjs                     → data/usage.json に書き出し
+//   node scripts/export-usage.mjs --out=foo.json       → 出力先を指定
+//   node scripts/export-usage.mjs --days=30            → 直近N日分だけ（既定90日）
 //
-// 書き出したJSONは、サイトの「過去ログの編集」→「インポート」ボタンでそのまま取り込める。
-// アカウント連携やAPIキーは一切不要。あなたのマシンのローカルログを読むだけで、外部送信もしない。
+// 実行するのはこのMac自身のログ読み取りのみで、外部送信は一切ない。
+// 書き出すのは日付・稼働時間・トークン数のみ（会話内容やプロジェクト名は含めない）。
 //
 // 「稼働時間」の考え方: 全セッション横断でメッセージのタイムスタンプを時系列に並べ、
 // 間隔が15分以内のものを1つの活動区間として連結する（WakaTime等と同じアイドル閾値の考え方）。
-// 並行して走らせた複数セッション（バックグラウンドエージェント等）の時間も、区間を先に統合してから
-// 集計するので二重計上しない。
+// 並行して走らせた複数セッション（バックグラウンドエージェント等）の時間も、
+// 全ファイルのイベントを1本の時系列に合流させてから区間統合するので二重計上しない。
 // 「トークン」は各アシスタント発言の usage（input+output+cache_creation+cache_read）の実測合計。
 
-import { readdirSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, statSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { createInterface } from "node:readline";
 import { createReadStream } from "node:fs";
@@ -28,7 +30,7 @@ const args = Object.fromEntries(
     return m ? [m[1], m[2] ?? true] : [a, true];
   }),
 );
-const OUT = args.out || "usage-export.json";
+const OUT = args.out || "data/usage.json";
 const DAYS = Number(args.days || 90);
 const TZ = args.tz || "Asia/Tokyo";
 const GAP_MS = 15 * 60 * 1000; // アイドル閾値: 15分
@@ -65,7 +67,6 @@ function localDateKey(date, timeZone) {
 
 /** その日のローカル0:00〜24:00をUTCミリ秒の範囲で返す */
 function dayBoundsUTC(dateKey, timeZone) {
-  // dateKey (YYYY-MM-DD) のローカル正午を仮に作り、そこからオフセットを逆算して0:00を求める
   const noonUTC = new Date(`${dateKey}T12:00:00Z`);
   const local = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -81,7 +82,7 @@ function dayBoundsUTC(dateKey, timeZone) {
   const localNoon = new Date(
     Date.UTC(+m.year, +m.month - 1, +m.day, +m.hour, +m.minute, +m.second),
   );
-  const offsetMs = localNoon - noonUTC; // ローカル時計がUTCよりどれだけ進んでいるか
+  const offsetMs = localNoon - noonUTC;
   const startLocalMidnightUTC = new Date(`${dateKey}T00:00:00Z`).getTime() - offsetMs;
   return [startLocalMidnightUTC, startLocalMidnightUTC + 24 * 3600 * 1000];
 }
@@ -102,8 +103,7 @@ async function main() {
 
   const cutoff = Date.now() - DAYS * 86400000;
   const activityTs = []; // 全種別のイベント時刻（稼働時間の算出用）
-  const usageEvents = []; // [{ts, tokens, project}]（トークン集計用）
-  const projectsByFile = new Map();
+  const usageEvents = []; // [{ts, tokens}]（トークン集計用）
 
   for (const file of files) {
     let st;
@@ -125,10 +125,7 @@ async function main() {
       const ts = d.timestamp ? Date.parse(d.timestamp) : NaN;
       if (!Number.isFinite(ts) || ts < cutoff) continue;
 
-      if (d.type === "user" || d.type === "assistant") {
-        activityTs.push(ts);
-        if (d.cwd) projectsByFile.set(file, d.cwd);
-      }
+      if (d.type === "user" || d.type === "assistant") activityTs.push(ts);
       if (d.type === "assistant" && d.message?.usage) {
         const u = d.message.usage;
         const tokens =
@@ -136,7 +133,7 @@ async function main() {
           (u.output_tokens || 0) +
           (u.cache_creation_input_tokens || 0) +
           (u.cache_read_input_tokens || 0);
-        usageEvents.push({ ts, tokens, project: d.cwd || null });
+        usageEvents.push({ ts, tokens });
       }
     }
   }
@@ -179,17 +176,11 @@ async function main() {
     }
   }
 
-  // トークン & プロジェクト名: 発生日ごとに集計
+  // トークン: 発生日ごとに集計
   const tokensByDate = new Map();
-  const projectsByDate = new Map();
   for (const ev of usageEvents) {
     const key = localDateKey(new Date(ev.ts), TZ);
     tokensByDate.set(key, (tokensByDate.get(key) || 0) + ev.tokens);
-    if (ev.project) {
-      const set = projectsByDate.get(key) || new Set();
-      set.add(ev.project.split("/").pop());
-      projectsByDate.set(key, set);
-    }
   }
 
   const dates = new Set([...hoursByDate.keys(), ...tokensByDate.keys()]);
@@ -197,13 +188,12 @@ async function main() {
   for (const date of dates) {
     const hours = Math.round((hoursByDate.get(date) || 0) * 10) / 10;
     const tokensM = Math.round(((tokensByDate.get(date) || 0) / 1e6) * 100) / 100;
-    const projects = [...(projectsByDate.get(date) || [])];
-    const memo = projects.length ? `実測: ${projects.slice(0, 4).join(" / ")}`.slice(0, 60) : undefined;
-    logs[date] = { date, hours, tokensM, tags: [], memo, sample: false, updatedAt: Date.now() };
+    logs[date] = { date, hours, tokensM };
   }
 
-  const out = { version: 1, seeded: true, logs };
-  writeFileSync(OUT, JSON.stringify(out, null, 2));
+  const out = { generatedAt: new Date().toISOString(), logs };
+  mkdirSync(dirname(OUT), { recursive: true });
+  writeFileSync(OUT, JSON.stringify(out, null, 2) + "\n");
 
   const sortedDates = [...dates].sort();
   const totalHours = [...hoursByDate.values()].reduce((a, b) => a + b, 0);
@@ -211,7 +201,6 @@ async function main() {
   console.log(`✳ 実データを書き出しました: ${OUT}`);
   console.log(`  対象期間: ${sortedDates[0]} 〜 ${sortedDates[sortedDates.length - 1]}（${sortedDates.length}日分）`);
   console.log(`  合計稼働: ${totalHours.toFixed(1)}h ／ 合計トークン: ${totalTokensM.toFixed(1)}M`);
-  console.log(`  → サイトの「過去ログの編集」→「インポート」でこのファイルを選択してください`);
 }
 
 main();

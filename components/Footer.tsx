@@ -19,14 +19,14 @@ export function Footer() {
               </span>
             </div>
             <p className="mt-4 max-w-sm text-xs leading-relaxed text-white/60">
-              Claude Codeの日次消費量・稼働時間・推定トークンを可視化する、ヘビーユーザー向けダッシュボード。
-              記録はこのブラウザのLocalStorageにのみ保存され、サーバーには送信されません。
+              Claude Codeの日次消費量・稼働時間・推定トークンを可視化する、個人用の実績ダッシュボード。
+              ローカルのClaude Codeログから1時間ごとに自動集計・自動更新される、読み取り専用のツールです。
             </p>
           </div>
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-white/50">Menu</div>
             <ul className="mt-3 space-y-2 text-sm">
-              <li><a href="#today" className="hover:text-orange-bright">今日の記録</a></li>
+              <li><a href="#today" className="hover:text-orange-bright">今日の実績</a></li>
               <li><a href="#dashboard" className="hover:text-orange-bright">消費推移ダッシュボード</a></li>
               <li><a href="#rank" className="hover:text-orange-bright">使い手ランク・実績</a></li>
               <li><a href="#share" className="hover:text-orange-bright">Xでシェア</a></li>
@@ -54,7 +54,7 @@ export function Footer() {
         <div className="mt-10 border-t border-white/10 pt-5 text-[11px] leading-relaxed text-white/45">
           <p>
             本サイトは個人が制作した非公式のファンメイドツールであり、Anthropic社およびClaude / Claude Codeとは一切関係ありません。
-            「5時間枠」「トークン上限」などの数値は利用者が手入力した自己申告値であり、実際の利用量・レートリミットとは連動していません。
+            稼働時間・トークン数はローカルログからの独自の推定ロジックによる集計値であり、Anthropicが公式に提示するレートリミット表示ではありません。
           </p>
           <p className="mt-2">© {new Date().getFullYear()} Claudecodeの使い手 / Y STUDIO</p>
         </div>

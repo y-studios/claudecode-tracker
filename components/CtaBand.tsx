@@ -1,10 +1,10 @@
 "use client";
 
-import { Save, Share2 } from "lucide-react";
+import { RefreshCw, Share2 } from "lucide-react";
 import { ClaudeBuddy } from "./claude/ClaudeBuddy";
 import { Asterisk } from "./claude/Asterisk";
 
-export function CtaBand() {
+export function CtaBand({ syncedAgo }: { syncedAgo: string }) {
   return (
     <section className="relative mx-auto max-w-6xl px-4 sm:px-6">
       <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-orange-bright via-orange to-clay-deep px-5 py-10 text-white shadow-[0_30px_60px_-30px_rgba(234,88,12,0.6)] sm:px-10 sm:py-14">
@@ -16,24 +16,24 @@ export function CtaBand() {
               <Asterisk size={12} weight={0.24} /> Claudecodeの使い手
             </div>
             <h2 className="display mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">
-              5時間枠、今日も使い切った？
+              今日も5時間枠、使い切った？
               <br />
-              記録して、見せびらかそう。
+              実測データが、勝手に見せびらかす。
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/85">
-              ワンタップで今日のログを保存、そのままXへポスト。
+              Claude Codeのローカルログを1時間ごとに自動集計。手を動かすのはX投稿ボタンだけ。
               連続上限到達と称号ランクで、毎日のフル稼働がちょっと楽しくなる。
             </p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <a href="#today" className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-ink shadow-lg transition hover:-translate-y-0.5">
+              <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-ink shadow-lg">
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-orange-tint text-orange">
-                  <Save size={20} />
+                  <RefreshCw size={20} />
                 </span>
                 <span>
-                  <span className="block text-sm font-black">今日のログを記録する</span>
-                  <span className="block text-[11px] text-ink-3">スライダーでワンタップ更新</span>
+                  <span className="block text-sm font-black">自動更新中</span>
+                  <span className="block text-[11px] text-ink-3">最終同期: {syncedAgo}</span>
                 </span>
-              </a>
+              </div>
               <a href="#share" className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-ink shadow-lg transition hover:-translate-y-0.5">
                 <span className="grid h-11 w-11 place-items-center rounded-xl bg-ink text-white">
                   <Share2 size={20} />

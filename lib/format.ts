@@ -22,8 +22,9 @@ export function hoursToHM(h: number): string {
   return `${hh}時間${mm}分`;
 }
 
+/** ビルド時に埋め込まれた環境変数から組み立てる（windowを参照しないためSSR/CSRで差異が出ない） */
 export function siteUrl(): string {
-  if (typeof window === "undefined") return "";
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://y-studios.github.io").replace(/\/$/, "");
   const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  return `${window.location.origin}${base}/`;
+  return `${origin}${base}/`;
 }

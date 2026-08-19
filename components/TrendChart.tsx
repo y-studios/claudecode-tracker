@@ -41,7 +41,7 @@ export function TrendChart({ logs, today }: Props) {
     return {
       key: k,
       label: formatMD(k),
-      wd: WEEKDAYS_JA[d.getDay()],
+      wd: WEEKDAYS_JA[d.getUTCDay()],
       hours: l?.hours ?? 0,
       tokensM: l?.tokensM ?? 0,
       isToday: k === today,

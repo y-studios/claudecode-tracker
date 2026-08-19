@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Flame, Clock, Coins, Crown, ArrowDown } from "lucide-react";
+import { Flame, Clock, Coins, Crown, RefreshCw } from "lucide-react";
 import { Asterisk } from "./claude/Asterisk";
 import { ClaudeBuddy } from "./claude/ClaudeBuddy";
 import type { Rank, Totals } from "@/lib/stats";
@@ -13,19 +13,19 @@ interface Props {
   streak: number;
   totals: Totals;
   rank: Rank;
-  hydrated: boolean;
+  syncedAgo: string;
 }
 
-export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
+export function Hero({ todayHours, streak, totals, rank, syncedAgo }: Props) {
   const pct = Math.min(1, todayHours / LIMIT_HOURS);
   const bubble =
-    pct >= 1
+    todayHours >= LIMIT_HOURS
       ? "今日の5時間枠、完全燃焼！最高！🎉"
       : pct >= 0.9
         ? "パンパン！あとひと押しで完走だよ🔥"
         : pct > 0
           ? "今日も5時間上限目指して爆走中！🔥"
-          : "今日も上限まで使い倒そう！準備はいい？✳️";
+          : "今日の実測ログ、まだ届いてないみたい✳️";
 
   return (
     <section id="top" className="relative overflow-hidden">
@@ -48,8 +48,8 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
               transition={{ duration: 0.5 }}
               className="inline-flex items-center gap-2 rounded-full border border-line bg-white/80 px-3 py-1.5 text-xs font-bold text-clay-deep shadow-sm"
             >
-              <Asterisk size={12} weight={0.24} />
-              Claude Code 消費量・稼働時間 日次ダッシュボード
+              <RefreshCw size={12} />
+              1時間ごとに自動更新・実測データのみ
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
@@ -69,11 +69,9 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
               transition={{ duration: 0.55, delay: 0.12 }}
               className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink-2 sm:text-base"
             >
-              5時間枠もトークン上限もパンパンまで使い倒す、
+              Claude Codeのローカルログから実際の稼働時間・消費トークンを自動集計。
               <br className="hidden sm:block" />
-              Claude Codeヘビーユーザーのための稼働ログ。
-              <br />
-              今日の消費ゲージ・連続上限到達・推定トークン推移をひと目で。
+              手入力は一切なし、眺めるだけの実績ダッシュボード。
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -81,17 +79,14 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
               transition={{ duration: 0.55, delay: 0.18 }}
               className="mt-7 flex flex-wrap items-center gap-3"
             >
-              <a href="#today" className="btn-primary">
-                今日のログを記録する
-                <ArrowDown size={16} />
+              <a href="#dashboard" className="btn-primary">
+                実績を見る
               </a>
-              <a href="#dashboard" className="btn-ghost">
-                推移を見る
+              <a href="#share" className="btn-ghost">
+                𝕏 でシェア
               </a>
             </motion.div>
-            <p className="mt-4 text-xs text-ink-3">
-              記録はこのブラウザのLocalStorageにだけ保存。アカウント不要・完全無料。
-            </p>
+            <p className="mt-4 text-xs text-ink-3">最終同期: {syncedAgo}</p>
           </div>
 
           {/* right: character */}
@@ -137,7 +132,7 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
                 <span>
                   <span className="block text-[10px] font-bold text-ink-3">今日の稼働</span>
                   <span className="num text-lg text-ink">
-                    {hydrated ? todayHours.toFixed(1) : "–"}
+                    {todayHours.toFixed(1)}
                     <span className="text-xs text-ink-3"> / {LIMIT_HOURS.toFixed(1)}h</span>
                   </span>
                 </span>
@@ -154,7 +149,7 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
                 <span>
                   <span className="block text-[10px] font-bold text-ink-3">連続上限到達</span>
                   <span className="num text-lg text-ink">
-                    {hydrated ? streak : "–"}
+                    {streak}
                     <span className="text-xs text-ink-3"> 日</span>
                   </span>
                 </span>
@@ -169,7 +164,7 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
             icon={<Flame size={20} />}
             tone="bg-danger-soft text-danger"
             label="連続上限到達"
-            value={hydrated ? `${streak}日` : "–"}
+            value={`${streak}日`}
             note={`${(LIMIT_HOURS * 0.9).toFixed(1)}h以上で到達`}
             delay={0}
           />
@@ -177,23 +172,23 @@ export function Hero({ todayHours, streak, totals, rank, hydrated }: Props) {
             icon={<Clock size={20} />}
             tone="bg-orange-tint text-orange"
             label="今月の総稼働"
-            value={hydrated ? `${totals.monthHours.toFixed(1)}時間` : "–"}
-            note={`${totals.monthDays}日分を記録`}
+            value={`${totals.monthHours.toFixed(1)}時間`}
+            note={`${totals.monthDays}日分の実測`}
             delay={0.05}
           />
           <QuickStat
             icon={<Coins size={20} />}
             tone="bg-[#fff5d6] text-[#b7791f]"
             label="推定総トークン"
-            value={hydrated ? fmtTokensM(totals.totalTokensM) : "–"}
-            note="自己申告の推定値"
+            value={fmtTokensM(totals.totalTokensM)}
+            note="実測ログの合計"
             delay={0.1}
           />
           <QuickStat
             icon={<Crown size={20} />}
             tone="bg-[#f3e8ff] text-[#7e22ce]"
             label="使い手ランク"
-            value={hydrated ? `${rank.emoji} ${rank.name}` : "–"}
+            value={`${rank.emoji} ${rank.name}`}
             note={rank.sub}
             delay={0.15}
             small

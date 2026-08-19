@@ -19,7 +19,7 @@ export function Heatmap({ logs, today, weeks = 16 }: Props) {
   const [hover, setHover] = useState<string | null>(null);
   // 今日を含む週の土曜まで埋める（GitHub風: 列=週, 行=日〜土）
   const todayD = fromKey(today);
-  const endKey = addDays(today, 6 - todayD.getDay());
+  const endKey = addDays(today, 6 - todayD.getUTCDay());
   const total = weeks * 7;
   const startKey = addDays(endKey, -(total - 1));
 
@@ -31,8 +31,8 @@ export function Heatmap({ logs, today, weeks = 16 }: Props) {
   }
   // 月ラベル（各列の最初の日の月が変わったら表示）
   const monthLabels = cols.map((col, i) => {
-    const m = fromKey(col[0]).getMonth();
-    const prev = i > 0 ? fromKey(cols[i - 1][0]).getMonth() : -1;
+    const m = fromKey(col[0]).getUTCMonth();
+    const prev = i > 0 ? fromKey(cols[i - 1][0]).getUTCMonth() : -1;
     return m !== prev ? `${m + 1}月` : "";
   });
 
@@ -106,8 +106,7 @@ export function Heatmap({ logs, today, weeks = 16 }: Props) {
           {hover ? (
             h ? (
               <>
-                {formatMD(hover)}（{WEEKDAYS_JA[fromKey(hover).getDay()]}）: {h.hours.toFixed(1)}h ／ {fmtTokensM(h.tokensM)}
-                {h.memo ? <span className="ml-1 font-medium text-ink-3">— {h.memo}</span> : null}
+                {formatMD(hover)}（{WEEKDAYS_JA[fromKey(hover).getUTCDay()]}）: {h.hours.toFixed(1)}h ／ {fmtTokensM(h.tokensM)}
               </>
             ) : (
               <>{formatMD(hover)}: 記録なし</>
