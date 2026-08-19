@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 実データエクスポート（個人の稼働ログ。公開リポジトリにはコミットしない）
+usage-export*.json
