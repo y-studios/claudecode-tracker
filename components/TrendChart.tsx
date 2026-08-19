@@ -20,6 +20,11 @@ import { REACH_HOURS } from "@/lib/stats";
 import { fmtTokensM } from "@/lib/format";
 import { ClaudeBuddy } from "./claude/ClaudeBuddy";
 
+const compactFormatter = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+function compactTick(v: number) {
+  return compactFormatter.format(v);
+}
+
 interface Props {
   logs: Record<string, DayLog>;
   today: string;
@@ -47,6 +52,9 @@ export function TrendChart({ logs, today }: Props) {
   const reached = data.filter((d) => d.hours >= REACH_HOURS).length;
   const full = data.filter((d) => d.hours >= LIMIT_HOURS).length;
   const tickEvery = range === 14 ? 1 : 3;
+  const maxHours = Math.max(LIMIT_HOURS, ...data.map((d) => d.hours));
+  const hoursDomainTop = maxHours > LIMIT_HOURS ? Math.ceil(maxHours * 1.1) : 5.5;
+  const hoursTicks = maxHours > LIMIT_HOURS ? undefined : [0, 1, 2, 3, 4, 5];
 
   return (
     <div className="card relative overflow-hidden p-5 sm:p-7">
@@ -110,8 +118,8 @@ export function TrendChart({ logs, today }: Props) {
                 minTickGap={tickEvery === 1 ? 16 : 24}
               />
               <YAxis
-                domain={[0, 5.5]}
-                ticks={[0, 1, 2, 3, 4, 5]}
+                domain={[0, hoursDomainTop]}
+                ticks={hoursTicks}
                 tick={{ fontSize: 11, fill: "#8c8177" }}
                 axisLine={false}
                 tickLine={false}
@@ -122,7 +130,7 @@ export function TrendChart({ logs, today }: Props) {
                 stroke="#dc2626"
                 strokeDasharray="5 4"
                 strokeWidth={1.5}
-                label={{ value: "5h 上限", position: "insideTopRight", fontSize: 10, fill: "#dc2626", fontWeight: 700 }}
+                label={{ value: "5h 上限", position: "insideBottomLeft", fontSize: 10, fill: "#dc2626", fontWeight: 700, dy: 10 }}
               />
               <Bar dataKey="hours" radius={[4, 4, 0, 0]} maxBarSize={24} animationDuration={500}>
                 {data.map((d) => (
@@ -148,7 +156,7 @@ export function TrendChart({ logs, today }: Props) {
         </div>
         <div className="h-[150px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 8, right: 18, left: -18, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 8, right: 18, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="tokGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#f97316" stopOpacity={0.28} />
@@ -164,7 +172,13 @@ export function TrendChart({ logs, today }: Props) {
                 interval="equidistantPreserveStart"
                 minTickGap={tickEvery === 1 ? 16 : 24}
               />
-              <YAxis tick={{ fontSize: 11, fill: "#8c8177" }} axisLine={false} tickLine={false} width={40} />
+              <YAxis
+                tick={{ fontSize: 11, fill: "#8c8177" }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+                tickFormatter={compactTick}
+              />
               <Tooltip cursor={{ stroke: "#ea580c", strokeWidth: 1 }} content={<TokensTip />} />
               <Area
                 type="monotone"

@@ -7,7 +7,8 @@ Claude Code 日次消費量・稼働時間・推定トークン推移を可視�
 - 公開URL（カスタムサブドメイン）: https://claudecode.shindan.biz/ （DNS設定後に有効化）
 - 技術: Next.js 16 (App Router / `output: "export"`) + TypeScript + Tailwind CSS v4 + Framer Motion + Recharts 3 + lucide-react
 - データ: ブラウザの LocalStorage のみ（`claudecode-tracker:v1`）。サーバー送信なし・アカウント不要・完全無料
-- 非公式のファンメイドツール。Anthropic社とは無関係。数値は自己申告の手入力値で、実際のレートリミットとは連動しない
+- 非公式のファンメイドツール。Anthropic社とは無関係
+- **手入力（ダミー/自己申告）と、実データ取り込み（`scripts/export-usage.mjs`）の2系統に対応**。何も操作しなければ手入力の初期サンプルログが入っているだけなので、実際の消費量と連動させたい場合は下記「実データを取り込む」を実行すること
 
 ## 機能
 
@@ -22,6 +23,28 @@ Claude Code 日次消費量・稼働時間・推定トークン推移を可視�
 | 過去ログ | 一覧編集・削除・過去日追加・JSONエクスポート/インポート・サンプルログの削除/復元 |
 
 スライダーを動かすとゲージ・グラフ・ヒートマップ・ランクが**保存前でも即時連動**する（Linear風のライブプレビュー）。
+
+## 実データを取り込む（あなたのClaude Code利用状況と連携）
+
+ブラウザは `~/.claude/` を直接読めない（静的サイトからローカルファイルへ自動アクセスはできない）ため、
+「ローカルでJSON書き出し → サイトのインポートボタンで取り込み」という2ステップ方式になっている。
+外部送信は一切なく、書き出したJSONにも会話内容やコードは含まれない（日付・稼働時間・トークン数・触ったプロジェクト名のみ）。
+
+```bash
+cd claudecode-tracker
+npm run export-usage                 # 直近90日分を usage-export.json に書き出し
+npm run export-usage -- --days=30    # 期間を変える場合
+```
+
+書き出したら、サイトの「過去ログの編集」→「インポート」ボタンで `usage-export.json` を選択する。
+既存のログは日付単位で上書きされる（インポートしなかった日はそのまま残る）。
+
+**集計方法**:
+- 稼働時間: `~/.claude/projects/**/*.jsonl` の全メッセージのタイムスタンプを時系列に並べ、間隔15分以内を1つの活動区間として連結（WakaTime等と同じアイドル閾値の考え方）。並行して走らせた複数セッションの時間も区間統合してから計算するので二重計上しない
+- トークン: 各アシスタント発言の `usage`（input + output + cache_creation + cache_read の実測合計）を日別に集計。キャッシュ読み込みを含むため、手入力の目安値（1日数M）より一桁以上大きくなるのが正常
+- 5時間の枠を大きく超える日があるのは想定通り（このツールの「稼働時間」は日次の実働時間で、Anthropicのローリング5時間ウィンドウそのものではない）
+
+定期的に実行して再インポートすれば、そのつど最新の実績に更新できる（自動連携ではなく手動同期）。
 
 ## 開発
 
@@ -51,5 +74,7 @@ node scripts/gen-icons.mjs  # ファビコン / OGP 再生成
 ## LocalStorage スキーマ
 
 ```ts
-{ version: 1, seeded: boolean, logs: { "YYYY-MM-DD": { date, hours(0-5), tokensM, tags[], memo?, sample?, updatedAt } } }
+{ version: 1, seeded: boolean, logs: { "YYYY-MM-DD": { date, hours(0-24), tokensM, tags[], memo?, sample?, updatedAt } } }
 ```
+
+手入力フォーム（Today カード）は 0〜5.0h のスライダーだが、インポート経由のログは実測値をそのまま保持する（5時間を超えてもよい）。

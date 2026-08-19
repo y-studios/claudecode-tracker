@@ -9,7 +9,6 @@ mkdirSync("public", { recursive: true });
 const ORANGE = "#ea580c";
 const ORANGE_L = "#fb923c";
 const CLAY = "#b2583c";
-const IVORY = "#faf8f5";
 const INK = "#1f1b16";
 
 function asterisk(cx, cy, r, w, color) {

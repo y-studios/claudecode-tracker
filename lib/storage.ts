@@ -112,7 +112,7 @@ export const tracker = {
       if (!l || typeof l.date !== "string" || typeof l.hours !== "number") continue;
       logs[l.date] = {
         date: l.date,
-        hours: Math.max(0, Math.min(5, l.hours)),
+        hours: Math.max(0, Math.min(24, l.hours)),
         tokensM: typeof l.tokensM === "number" ? l.tokensM : 0,
         tags: Array.isArray(l.tags) ? l.tags : [],
         memo: typeof l.memo === "string" ? l.memo : undefined,

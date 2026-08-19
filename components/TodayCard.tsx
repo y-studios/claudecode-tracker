@@ -114,7 +114,7 @@ export function TodayCard({ today, draft, dirty, savedAt, onChange, onSave }: Pr
                 id="hours"
                 type="range"
                 min={0}
-                max={LIMIT_HOURS}
+                max={Math.max(LIMIT_HOURS, draft.hours)}
                 step={0.1}
                 value={draft.hours}
                 onChange={(e) => set({ hours: Number(e.target.value) })}
