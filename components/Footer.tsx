@@ -33,19 +33,6 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-white/50">Links</div>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a href="https://y-studios.github.io/" target="_blank" rel="noopener noreferrer" className="hover:text-orange-bright">
-                  Y STUDIO（プロダクト一覧）
-                </a>
-              </li>
-              <li>
-                <a href="https://github.com/y-studios/claudecode-tracker" target="_blank" rel="noopener noreferrer" className="hover:text-orange-bright">
-                  GitHub
-                </a>
-              </li>
-            </ul>
             <div className="mt-6 hidden md:block">
               <ClaudeBuddy size={64} mood="sleepy" prop="coffee" tone="clay" />
             </div>
